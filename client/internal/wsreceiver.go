@@ -17,6 +17,10 @@ type wsReceiver struct {
 	sender    *WSSender
 	callbacks types.Callbacks
 	processor receivedProcessor
+
+	// Indicates that the receiver has fully stopped.
+	stopped chan struct{}
+	err     error
 }
 
 // NewWSReceiver creates a new Receiver that uses WebSocket to receive
@@ -36,14 +40,28 @@ func NewWSReceiver(
 		sender:    sender,
 		callbacks: callbacks,
 		processor: newReceivedProcessor(logger, callbacks, sender, clientSyncedState, packagesStateProvider, capabilities),
+		stopped:   make(chan struct{}),
 	}
 
 	return w
 }
 
+// Start starts the receiver loop. To stop the receiver cancel the context.
+func (r *wsReceiver) Start(ctx context.Context) {
+	go r.ReceiverLoop(ctx)
+}
+
+func (r *wsReceiver) IsStopped() <-chan struct{} {
+	return r.stopped
+}
+
+func (r *wsReceiver) Err() error {
+	return r.err
+}
+
 // ReceiverLoop runs the receiver loop. To stop the receiver cancel the context.
 func (r *wsReceiver) ReceiverLoop(ctx context.Context) {
-	runContext, cancelFunc := context.WithCancel(ctx)
+	processorCtx, stopProcessor := context.WithCancel(ctx)
 
 out:
 	for {
@@ -52,13 +70,15 @@ out:
 			if ctx.Err() == nil && !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				r.logger.Errorf("Unexpected error while receiving: %v", err)
 			}
+			r.err = err
 			break out
 		} else {
-			r.processor.ProcessReceivedMessage(runContext, &message)
+			r.processor.ProcessReceivedMessage(processorCtx, &message)
 		}
 	}
 
-	cancelFunc()
+	stopProcessor()
+	close(r.stopped)
 }
 
 func (r *wsReceiver) receiveMessage(msg *protobufs.ServerToAgent) error {
