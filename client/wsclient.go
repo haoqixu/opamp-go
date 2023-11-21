@@ -39,6 +39,10 @@ type wsClient struct {
 
 	// The sender is responsible for sending portion of the OpAMP protocol.
 	sender *internal.WSSender
+
+	// Network connection timeout used for the WebSocket closing handshake.
+	// This field is currently only modified during testing.
+	connShutdownTimeout time.Duration
 }
 
 // NewWebSocket creates a new OpAMP Client that uses WebSocket transport.
@@ -49,8 +53,9 @@ func NewWebSocket(logger types.Logger) *wsClient {
 
 	sender := internal.NewSender(logger)
 	w := &wsClient{
-		common: internal.NewClientCommon(logger, sender),
-		sender: sender,
+		common:              internal.NewClientCommon(logger, sender),
+		sender:              sender,
+		connShutdownTimeout: defaultShutdownTimeout,
 	}
 	return w
 }
@@ -259,7 +264,7 @@ func (c *wsClient) runOneCycle(ctx context.Context) {
 		select {
 		case <-r.IsStopped():
 			c.common.Logger.Debugf("shutdown handshake complete.")
-		case <-time.After(defaultShutdownTimeout):
+		case <-time.After(c.connShutdownTimeout):
 			c.common.Logger.Debugf("timeout waiting for close message.")
 			// not receive close message from the server, close the connection to force the receive loop to stop
 			_ = c.conn.Close()
