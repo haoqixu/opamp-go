@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"log"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
@@ -32,6 +33,7 @@ func NewSender(logger types.Logger) *WSSender {
 // Start the sender and send the first message that was set via NextMessage().Update()
 // earlier. To stop the WSSender cancel the ctx.
 func (s *WSSender) Start(ctx context.Context, conn *websocket.Conn) error {
+	log.Println("client: send message at Start")
 	s.conn = conn
 	err := s.sendNextMessage()
 
@@ -53,6 +55,7 @@ out:
 	for {
 		select {
 		case <-s.hasPendingMessage:
+			log.Println("client: sending pending message")
 			s.sendNextMessage()
 
 		case <-ctx.Done():

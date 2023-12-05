@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"google.golang.org/protobuf/proto"
@@ -234,6 +235,7 @@ func (c *ClientCommon) SetAgentDescription(descr *protobufs.AgentDescription) er
 	if err := c.ClientSyncedState.SetAgentDescription(descr); err != nil {
 		return err
 	}
+	log.Println("client: SetAgentDescription and ScheduleSend")
 	c.sender.NextMessage().Update(
 		func(msg *protobufs.AgentToServer) {
 			msg.AgentDescription = c.ClientSyncedState.AgentDescription()

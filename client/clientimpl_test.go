@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -621,6 +622,7 @@ func TestSetAgentDescription(t *testing.T) {
 
 func TestAgentIdentification(t *testing.T) {
 	testClients(t, func(t *testing.T, client OpAMPClient) {
+		log.Println("test begin")
 		// Start a server.
 		srv := internal.StartMockServer(t)
 		newInstanceUid := ulid.MustNew(
@@ -629,6 +631,7 @@ func TestAgentIdentification(t *testing.T) {
 		var rcvAgentInstanceUid atomic.Value
 		srv.OnMessage = func(msg *protobufs.AgentToServer) *protobufs.ServerToAgent {
 			rcvAgentInstanceUid.Store(msg.InstanceUid)
+			log.Printf("server: store uid %v to rcvAgentInstanceUid", msg.InstanceUid)
 			return &protobufs.ServerToAgent{
 				InstanceUid: msg.InstanceUid,
 				AgentIdentification: &protobufs.AgentIdentification{
@@ -643,6 +646,7 @@ func TestAgentIdentification(t *testing.T) {
 		prepareClient(t, &settings, client)
 
 		oldInstanceUid := settings.InstanceUid
+		log.Printf("old instance uid is %v, starting client\n", oldInstanceUid)
 		assert.NoError(t, client.Start(context.Background(), settings))
 
 		// First, Server gets the original instanceId
@@ -651,12 +655,15 @@ func TestAgentIdentification(t *testing.T) {
 			func() bool {
 				instanceUid, ok := rcvAgentInstanceUid.Load().(string)
 				if !ok {
+					log.Println("first assert: not ok")
 					return false
 				}
+				log.Printf("first assert: want %v, got: %v\n", oldInstanceUid, instanceUid)
 				return instanceUid == oldInstanceUid
 			},
 		)
 
+		log.Println("send dummy message")
 		// Send a dummy message
 		_ = client.SetAgentDescription(createAgentDescr())
 
@@ -667,8 +674,10 @@ func TestAgentIdentification(t *testing.T) {
 			func() bool {
 				instanceUid, ok := rcvAgentInstanceUid.Load().(string)
 				if !ok {
+					log.Println("second assert: not ok")
 					return false
 				}
+				log.Printf("second assert: want %v, got: %v\n", newInstanceUid.String(), instanceUid)
 				return instanceUid == newInstanceUid.String()
 			},
 		)
@@ -679,6 +688,8 @@ func TestAgentIdentification(t *testing.T) {
 		// Shutdown the client.
 		err := client.Stop(context.Background())
 		assert.NoError(t, err)
+
+		log.Println("test end")
 	})
 }
 
