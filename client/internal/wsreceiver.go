@@ -51,10 +51,12 @@ func (r *wsReceiver) Start(ctx context.Context) {
 	go r.ReceiverLoop(ctx)
 }
 
+// IsStopped returns a channel that's closed when the receiver is stopped.
 func (r *wsReceiver) IsStopped() <-chan struct{} {
 	return r.stopped
 }
 
+// Err returns the error that caused the receiver loop to exit.
 func (r *wsReceiver) Err() error {
 	return r.err
 }
