@@ -46,7 +46,7 @@ func NewWSReceiver(
 	return w
 }
 
-// Start starts the receiver loop. To stop the receiver cancel the context.
+// Start starts the receiver loop.
 func (r *wsReceiver) Start(ctx context.Context) {
 	go r.ReceiverLoop(ctx)
 }
@@ -61,7 +61,8 @@ func (r *wsReceiver) Err() error {
 	return r.err
 }
 
-// ReceiverLoop runs the receiver loop. To stop the receiver cancel the context.
+// ReceiverLoop runs the receiver loop.
+// To stop the receiver cancel the context and close the websocket connection
 func (r *wsReceiver) ReceiverLoop(ctx context.Context) {
 	processorCtx, stopProcessor := context.WithCancel(ctx)
 
