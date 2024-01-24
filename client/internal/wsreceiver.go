@@ -20,7 +20,6 @@ type wsReceiver struct {
 
 	// Indicates that the receiver has fully stopped.
 	stopped chan struct{}
-	err     error
 }
 
 // NewWSReceiver creates a new Receiver that uses WebSocket to receive
@@ -56,11 +55,6 @@ func (r *wsReceiver) IsStopped() <-chan struct{} {
 	return r.stopped
 }
 
-// Err returns the error that caused the receiver loop to exit.
-func (r *wsReceiver) Err() error {
-	return r.err
-}
-
 // ReceiverLoop runs the receiver loop.
 // To stop the receiver cancel the context and close the websocket connection
 func (r *wsReceiver) ReceiverLoop(ctx context.Context) {
@@ -73,7 +67,6 @@ out:
 			if ctx.Err() == nil && !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				r.logger.Errorf("Unexpected error while receiving: %v", err)
 			}
-			r.err = err
 			break out
 		} else {
 			r.processor.ProcessReceivedMessage(processorCtx, &message)
